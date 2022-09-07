@@ -42,7 +42,7 @@ export class JiumoService {
         });
       });
     });
-    return booklist.length == 0 ? { error: '没有结果' } : booklist;
+    return booklist.length == 0 ? "" : booklist;
     // return data1;
   }
 }

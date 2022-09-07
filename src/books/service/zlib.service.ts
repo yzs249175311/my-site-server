@@ -30,7 +30,7 @@ export class ZlibService {
         booklist = this.handleData(this.loadData(data));
       }
 
-      return  booklist.length == 0 ? { error:"no result" }:booklist ;
+      return  booklist.length == 0 ? "":booklist ;
 
     } catch (error) {
       console.log("zlib search error");

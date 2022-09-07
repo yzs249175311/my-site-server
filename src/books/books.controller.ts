@@ -12,18 +12,19 @@ export class BooksController {
 
   @Get('search')
   async searchBooks(@Query('bookName') bookName: string) {
-    let data: Array<Book[] | {}> = await Promise.all([
+    let result: Array<Book[] | ""> = await Promise.all([
       this.jiumoService.searchBooks(bookName),
       this.zlibService.searchBooks(bookName),
     ]);
 
-    data.reduce(function (oldval, newval) {
-      if (Array.prototype.isPrototypeOf(newval)) {
+    let [...data] = result.reduce(function (oldval, newval) {
+      if (newval != "") {
         return Array.prototype.concat(oldval, newval);
       } else {
         return oldval;
       }
     }, []);
+
     return data.length == 0 ? {error:-1}:data;
   }
 }
