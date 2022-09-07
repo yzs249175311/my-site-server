@@ -7,6 +7,6 @@ import { MusicModule } from './music/music.module';
 @Module({
   imports: [ BooksModule, MusicModule],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService ],
 })
 export class AppModule {}
