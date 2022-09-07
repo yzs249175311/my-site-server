@@ -36,8 +36,9 @@ export class JiumoService {
         if (!item.link) return;
         booklist.push({
           title: item.title,
-          desc: item.des,
+          desc: item.des || "无",
           link: item.link,
+          from: '鸠摩',
         });
       });
     });
