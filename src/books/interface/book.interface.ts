@@ -1,10 +1,10 @@
-export type BookProvider  = "鸠摩" | "zlibrary"
+export type BookProvider  = "鸠摩" | "zlibrary" | ""
 
 export interface Book {
     title:string,
     desc:string,
     link:string,
-    from?:BookProvider,
+    from:BookProvider,
     author?:string,
     image?:string,
 }

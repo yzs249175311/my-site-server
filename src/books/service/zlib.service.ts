@@ -63,6 +63,7 @@ export class ZlibService {
           title: '',
           desc: '',
           link: '',
+          from: '',
         };
         book.title = $(this)
           .find(
