@@ -20,7 +20,6 @@ export class ZlibService {
     'bookshome.org',
     '1lib.to',
   ];
-  private index = -1;
 
   constructor() {
     this.checkBaseUrl();
@@ -42,6 +41,7 @@ export class ZlibService {
           'user-agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36 Edg/105.0.1343.27',
         },
+        timeout:5000
       });
       if (data.match(/html/)) {
         booklist = this.handleData(this.loadData(data));
@@ -99,36 +99,44 @@ export class ZlibService {
   }
 
   async checkBaseUrl() {
-    this.index = (this.index + 1) % this.booksDomains.length;
-    console.log('checkBaseUrl===>' + this.index);
+    let list = []
+    this.booksDomains.forEach((domain) => {
+      list.push(this.testUrl(domain)) 
+    });
+    let res =await Promise.all(list)
+    console.log("res==>",res)
+    res.some((value,index) => {
+      if(value==true){
+        this.baseUrl=this.booksDomains[index]
+        console.log("set zlib domain:",this.booksDomains[index])
+        return true
+      }
+      return false
+    })
+  }
+
+  async testUrl(url) {
     try {
       let { data } = await axios({
         method: 'get',
-        baseURL: `https://${this.booksDomains[this.index]}`,
+        baseURL: `https://${url}`,
         headers: {
           accept:
             'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
           'accept-encoding': 'gzip, deflate, br',
-          // "cookie":`domains-availability={"books":"zh.b-ok.asia","articles":"zh.booksc.org","redirector":"zh.1lib.domains","singlelogin":"zh.singlelogin.me"}`,
+          // "cookie":`domains-availability={"books":"zh.b-ok.asia","articles":"zh.booksc.org","redirector":"zh.0lib.domains","singlelogin":"zh.singlelogin.me"}`,
           'user-agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36 Edg/105.0.1343.27',
         },
       });
 
       if (data.match(/searchForm/)) {
-        this.baseUrl = `https://${this.booksDomains[this.index]}`;
-        console.log('set zlib domian:' + this.baseUrl);
-        return;
+        return true;
       }
-      if (this.index == this.booksDomains.length - 1) {
-        return;
-      }
-      this.checkBaseUrl();
     } catch (error) {
-      if (this.index == this.booksDomains.length - 1) {
-        return;
-      }
-      this.checkBaseUrl();
+      return false;
+    } finally {
+      return false;
     }
   }
 }
