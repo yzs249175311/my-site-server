@@ -9,6 +9,7 @@ export interface Music {
 	other?: {
 		requestlink?: string,
 		platform?: string,
+		originalId?: string,
 	}
 }
 

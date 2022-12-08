@@ -42,12 +42,24 @@ export class TonzhonService {
 				platform: "tonzhon",
 				other: {
 					requestlink: this.sourceUrl + item.platform + "/" + item.originalId,
-					platform: item.platform
+					platform: item.platform,
+					originalId: item.originalId
 				},
 			}
 		})
 
 		return res
+	}
+
+	async getSource(link: string) {
+		let res = await axios({
+			baseURL:link,
+			headers: {
+				userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36",
+			}
+		}).catch(() => null)
+
+		return res ? res.data : { error: -1 }
 	}
 
 	async searchMusic(musicName: string) {
@@ -58,7 +70,7 @@ export class TonzhonService {
 			this.createSearchPromise("/secondhand_api/search", musicName, "qq"),
 			this.createSearchPromise("/secondhand_api/search", musicName, "netease"),
 			this.createSearchPromise("/secondhand_api/search", musicName, "kuwo"),
-		]).catch(()=>{
+		]).catch(() => {
 			return null
 		})
 
@@ -70,6 +82,6 @@ export class TonzhonService {
 
 		let result: Music[] = this.handleData(musiclist)
 
-		return !result.length?{error:-1}:result
+		return !result.length ? { error: -1 } : result
 	}
 }
