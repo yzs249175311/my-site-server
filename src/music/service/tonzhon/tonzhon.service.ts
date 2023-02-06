@@ -1,18 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { Music, TonZhonMusic } from '../../interface/music.interface'
 import axios from 'axios';
-import { platform } from 'os';
 
 @Injectable()
 export class TonzhonService {
-	private baseUrl = "https://tonzhon.com"
-	private sourceUrl = "https://tonzhon.com/secondhand_api/song_source/"
+	private baseUrl = "https://tonzhon.com/"
+	private baseUrl1 = "https://music-api.tonzhon.com/"
+	private sourceUrl = "https://music-api.tonzhon.com/song_source/"
 
 	constructor() {}
 
-	createSearchPromise(url: string, musicName: string, platform: string = null) {
+	createSearchPromise(baseURL: string, url: string, musicName: string, platform: string = null) {
 		return platform ? axios({
-			baseURL: this.baseUrl,
+			baseURL,
 			url,
 			params: {
 				keyword: musicName,
@@ -22,7 +22,7 @@ export class TonzhonService {
 				userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36",
 			},
 		}) : axios({
-			baseURL: this.baseUrl,
+			baseURL,
 			url,
 			params: {
 				keyword: musicName,
@@ -33,6 +33,7 @@ export class TonzhonService {
 		})
 	}
 
+	//处理数据
 	handleData(musicList: TonZhonMusic[]): Music[] {
 		let res: Music[] = musicList.filter(item => item).map((item: TonZhonMusic) => {
 			return {
@@ -41,7 +42,7 @@ export class TonzhonService {
 				link: "",
 				platform: "tonzhon",
 				other: {
-					requestlink: this.sourceUrl + item.platform + "/" + item.originalId,
+					requestlink: item.platform + "/" + item.originalId,
 					platform: item.platform,
 					originalId: item.originalId
 				},
@@ -51,9 +52,12 @@ export class TonzhonService {
 		return res
 	}
 
+	//获取音乐链接
 	async getSource(link: string) {
+		console.log(link)
 		let res = await axios({
-			baseURL:link,
+			baseURL:this.sourceUrl,
+			url:link,
 			headers: {
 				userAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36",
 			}
@@ -62,21 +66,24 @@ export class TonzhonService {
 		return res ? res.data : { error: -1 }
 	}
 
+	//获取音乐列表
 	async searchMusic(musicName: string) {
 		let musiclist: TonZhonMusic[] = []
-		let res = await Promise.all([
-			this.createSearchPromise("/api/exact_search", musicName),
-			this.createSearchPromise("/api/fuzzy_search", musicName),
-			this.createSearchPromise("/secondhand_api/search", musicName, "qq"),
-			this.createSearchPromise("/secondhand_api/search", musicName, "netease"),
-			this.createSearchPromise("/secondhand_api/search", musicName, "kuwo"),
-		]).catch(() => {
-			return null
-		})
+		let res = [
+			await this.createSearchPromise(this.baseUrl,"/api/exact_search", musicName),
+			await this.createSearchPromise(this.baseUrl,"/api/fuzzy_search", musicName),
+			await this.createSearchPromise(this.baseUrl1,"/search", musicName, "qq"),
+			await this.createSearchPromise(this.baseUrl1,"/search", musicName, "netease"),
+			await this.createSearchPromise(this.baseUrl1,"/search", musicName, "kuwo"),
+		]
 
 		res && res.forEach(item => {
 			if (item.data?.success) {
-				musiclist = musiclist.concat(item.data?.data?.songs as TonZhonMusic[])
+				if(item.data.data){
+					musiclist = musiclist.concat(item.data.data.songs as TonZhonMusic[])
+				}else{
+					musiclist = musiclist.concat(item.data.songs as TonZhonMusic[])
+				}
 			}
 		})
 

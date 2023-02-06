@@ -27,6 +27,7 @@
     "@types/cheerio": "^0.22.31",
     "axios": "^0.27.2",
     "cheerio": "^1.0.0-rc.12",
+    "mongodb": "^4.13.0",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
     "rxjs": "^7.2.0"
