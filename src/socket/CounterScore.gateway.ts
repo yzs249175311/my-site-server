@@ -17,15 +17,34 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 			return
 		}
 
+		let name: string = "";
+		let money: number = 0;
+
+		if(client.handshake.query.name){
+			name = client.handshake.query.name as string
+		}else{
+			name = Mock.mock("@cname")
+		}
+
+		if(client.handshake.query.money){
+			money = parseInt(client.handshake.query.money as string) 
+		}
+
 		// new or unrecoverable session
 		Reflect.defineProperty(client, "name", {
-			value: Mock.mock("@cname"),
+			value: name,
+			writable: true,
+		})
+
+		Reflect.defineProperty(client, "money", {
+			value: money,
 			writable: true,
 		})
 
 		client.emit('user', {
 			id: client.id,
-			name: Reflect.get(client, "name")
+			name: Reflect.get(client, "name"),
+			money,
 		})
 		//初始化名字
 	}
