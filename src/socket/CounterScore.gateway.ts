@@ -2,7 +2,9 @@ import { SubscribeMessage, WebSocketGateway, OnGatewayConnection, OnGatewayDisco
 import { Socket, Server } from 'socket.io';
 let Mock = require("mockjs")
 
-@WebSocketGateway(3001, { cors: true })
+@WebSocketGateway(3001, {cors:{
+	origin: "http://101.43.108.86/"
+}})
 export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 	// 处理客户端连接
@@ -56,7 +58,6 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 		sockets.forEach((socket) => {
 			let id = socket.id
 			let name = Reflect.get(socket, "name")
-			console.log(name)
 			playlist.push({
 				id,
 				name
