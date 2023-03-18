@@ -3,7 +3,7 @@ import { Socket, Server } from 'socket.io';
 let Mock = require("mockjs")
 
 @WebSocketGateway(3001, {cors:{
-	origin: "http://101.43.108.86/"
+	origin: "*"
 }})
 export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
