@@ -2,9 +2,7 @@ import { SubscribeMessage, WebSocketGateway, OnGatewayConnection, OnGatewayDisco
 import { Socket, Server } from 'socket.io';
 let Mock = require("mockjs")
 
-@WebSocketGateway(3001, {cors:{
-	origin: "*"
-}})
+@WebSocketGateway(3001, { cors: { origin: "*", } })
 export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 	// 处理客户端连接
@@ -22,7 +20,7 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 		// new or unrecoverable session
 		Reflect.defineProperty(client, "name", {
 			value: Mock.mock("@cname"),
-			writable:true,
+			writable: true,
 		})
 
 		client.emit('user', {
@@ -47,7 +45,7 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 	@SubscribeMessage('paymoney')
 	handlePayMoney(@ConnectedSocket() client: Socket, @MessageBody() payload: { id: string, money: number }) {
 		if (payload.id) {
-			this.server.to(payload.id).emit("add", { id: client.id, name: Reflect.get(client,"name"), money: payload.money })
+			this.server.to(payload.id).emit("add", { id: client.id, name: Reflect.get(client, "name"), money: payload.money })
 		}
 	}
 
@@ -69,7 +67,7 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 	@SubscribeMessage('changeName')
 	handleChangeName(@ConnectedSocket() client: Socket, @MessageBody() name: string) {
 		if (name) {
-			Reflect.set(client, "name", name) 
+			Reflect.set(client, "name", name)
 			this.handlePlayers()
 		}
 
