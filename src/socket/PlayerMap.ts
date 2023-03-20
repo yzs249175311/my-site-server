@@ -40,14 +40,18 @@ export class PlayerMap {
 
 	//检查玩家离线的时间是否过长，删除或者提出房间
 	validTrashPlayer(): void {
-		let tmp: number
-		for (let player of this.playerMap.values()) {
-			tmp = Date.now() - player.lastActive
-			if (tmp > this.deleteTime) {
-				this.playerMap.delete(player.uid)
-			} else if (tmp > this.leaveRoomTime) {
-				this.playerMap.get(player.uid).roomid = ""
+		try{
+			let tmp: number
+			for (let player of this.playerMap.values()) {
+				tmp = Date.now() - player.lastActive
+				if (tmp > this.deleteTime) {
+					this.playerMap.delete(player.uid)
+				} else if (tmp > this.leaveRoomTime) {
+					this.playerMap.get(player.uid).roomid = ""
+				}
 			}
+		} catch (e) {
+			console.log("validTrashPlayer:" + e)
 		}
 	}
 

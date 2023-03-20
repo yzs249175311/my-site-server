@@ -21,14 +21,13 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 
 	constructor() {
 		this.playerMap = new PlayerMap()
-		this.playerMap.enableTrashPlayerTimer(5 * 1000)
+		this.playerMap.enableTrashPlayerTimer(60 * 1000)
 	}
 
 	handleConnection(@ConnectedSocket() client: Socket) {
 		let player: Player | null = null;
 		let uid = client.handshake.query.uid
-
-		if (uid && uid !== "" && (typeof uid === "string") && this.playerMap.hasPlayer(uid as string)) {
+		if (uid && uid !== "" && (typeof uid === "string") && this.playerMap.hasPlayer(uid)) {
 			player = this.playerMap.getPlayer(uid)
 			player.id = client.id
 			player.connected = true
@@ -62,24 +61,24 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 			let fromPlayer = this.playerMap.getPlayer(payload.from.uid)
 			let toPlayer = this.playerMap.getPlayer(payload.to.uid)
 
-			if(fromPlayer.money < payload.money){
-				client.emit("message","你的分数不够支付")
+			if (fromPlayer.money < payload.money) {
+				client.emit("message", "你的分数不够支付")
 				return
 			}
 
-			if(fromPlayer.roomid !== toPlayer.roomid){
-				client.emit("message","你们不在一个房间")
+			if (fromPlayer.roomid !== toPlayer.roomid) {
+				client.emit("message", "你们不在一个房间")
 				return
 			}
 
-			fromPlayer.money -=  payload.money
-			toPlayer.money +=  payload.money
+			fromPlayer.money -= payload.money
+			toPlayer.money += payload.money
 
 			this.server.to(fromPlayer.roomid).emit("fetchUser")
 			this.handleMessage(client, `<${fromPlayer.name}> 向 <${toPlayer.name}> 支付了 ${payload.money} 分`)
 			this.handlePlayerList(fromPlayer.roomid)
-		}else{
-			client.emit("message","找不到这个人！")
+		} else {
+			client.emit("message", "找不到这个人！")
 		}
 	}
 
@@ -130,7 +129,6 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 	//客户端数据发生变化后，更新服务器数据 
 	@SubscribeMessage('update')
 	async handleUpdate(@ConnectedSocket() client: Socket, @MessageBody() player: IPlayer) {
-		console.log("updata " + client.id + "数据 " + player.name)
 		let oldplayer: Player = this.getClientPlayer(client)
 		for (let [key, value] of Object.entries(player)) {
 			if (value === oldplayer[key] || key === "lastActive") {
