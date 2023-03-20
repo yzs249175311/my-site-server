@@ -34,25 +34,22 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 			Reflect.defineProperty(client, "uid", {
 				value: uid,
 			})
+			this.handleRoomJoin(client,player.roomid)
 		} else {
-			this.playerMap.pushPlayer(new Player(client.id, client.id, Mock.mock("@cname")))
+			this.playerMap.pushPlayer(new Player(client.id, client.id, Mock.mock("@cname"),this.server))
 			Reflect.defineProperty(client, "uid", {
 				value: client.id,
 			})
 		}
-
-		this.handleFetchPlayer(client)
-		this.handleRoomJoin(client)
-		client.emit('rooms', this.rooms)
 	}
 
 	// 处理客户端断开
 	handleDisconnect(@ConnectedSocket() client: Socket) {
-		let uid = this.getClientUid(client)
+		let {uid} = this.getClientPlayer(client)
 		if (this.playerMap.hasPlayer(uid)) {
 			this.playerMap.getPlayer(uid).connected = false
+			console.log("disconnect:"+uid)
 		}
-		this.handlePlayerList(this.getClientRoomid(client))
 	}
 
 	@SubscribeMessage('paymoney')
@@ -74,9 +71,8 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 			fromPlayer.money -= payload.money
 			toPlayer.money += payload.money
 
-			this.server.to(fromPlayer.roomid).emit("fetchUser")
 			this.handleMessage(client, `<${fromPlayer.name}> 向 <${toPlayer.name}> 支付了 ${payload.money} 分`)
-			this.handlePlayerList(fromPlayer.roomid)
+			// this.handleFetchAll(fromPlayer.roomid)
 		} else {
 			client.emit("message", "找不到这个人！")
 		}
@@ -84,7 +80,16 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 
 	@SubscribeMessage('fetchUser')
 	handleFetchPlayer(@ConnectedSocket() client: Socket) {
-		client.emit("pushUser", this.getClientPlayer(client).getInfo())
+		client.emit("updateUser", this.getClientPlayer(client).getInfo())
+	}
+
+
+	@SubscribeMessage('updateUser')
+	handleUpdatePlayer(@ConnectedSocket() client: Socket,@MessageBody() newPlayer:IPlayer) {
+		let player = this.getClientPlayer(client)
+		if(player){
+			player.setInfo(newPlayer)
+		}
 	}
 
 	@SubscribeMessage('message')
@@ -94,17 +99,17 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 
 	//进入房间
 	@SubscribeMessage('roomJoin')
-	async handleRoomJoin(@ConnectedSocket() client: Socket) {
+	async handleRoomJoin(@ConnectedSocket() client: Socket, @MessageBody() toRoomid: string) {
 		let player = this.getClientPlayer(client)
 		let roomid = player.roomid
-		if (roomid === "") {
+		if (roomid === toRoomid) {
 			return
 		}
-		let name = player.name
-		client.join(roomid)
-		player.roomid = roomid
-		this.handleMessage(client, `<${name}> 进入房间 ${roomid}`)
-		await this.handlePlayerList(roomid)
+		await this.handleRoomLeave(client)
+		client.join(toRoomid)
+		player.roomid = toRoomid
+		this.handleMessage(client, `<${player.name}> 进入房间 ${roomid}`)
+		// this.handleFetchAll(toRoomid)
 	}
 
 	//离开房间
@@ -116,33 +121,43 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 		this.handleMessage(client, `<${name}> 离开房间 ${roomid}`)
 		client.leave(roomid)
 		player.roomid = ""
-		await this.handlePlayerList(roomid)
+		// this.handleFetchAll(roomid)
+	}
+	
+	//广播当前房间的成员
+	@SubscribeMessage('fetchPlayerList')
+	async handlePlayerList(@ConnectedSocket() client:Socket) {
+		let player = this.getClientPlayer(client)
+		let playerlist = this.playerMap.filterByRoomid(player.roomid)
+		client.emit('updatePlayerList', playerlist)
 	}
 
-	//广播当前房间的成员
-	@SubscribeMessage('playerList')
-	async handlePlayerList(roomid: string) {
-		let playerlist = this.playerMap.filterByRoomid(roomid)
-		this.server.to(roomid).emit('playerList', playerlist)
+	@SubscribeMessage('fetchRooms')
+	async handleRooms(@ConnectedSocket() client: Socket) {
+		this.server.to(client.id).emit('updateRooms', this.rooms)
 	}
 
 	//客户端数据发生变化后，更新服务器数据 
-	@SubscribeMessage('update')
-	async handleUpdate(@ConnectedSocket() client: Socket, @MessageBody() player: IPlayer) {
-		let oldplayer: Player = this.getClientPlayer(client)
-		for (let [key, value] of Object.entries(player)) {
-			if (value === oldplayer[key] || key === "lastActive") {
-				continue
-			} else {
-				if (key === "roomid") {
-					await this.handleRoomLeave(client)
-					oldplayer.roomid = value
-					await this.handleRoomJoin(client)
-				}
-				oldplayer[key] = value
-			}
-		}
-		this.handlePlayerList(this.getClientRoomid(client))
+	// @SubscribeMessage('update')
+	// async handleUpdate(@ConnectedSocket() client: Socket, @MessageBody() player: IPlayer) {
+	// 	let oldplayer: Player = this.getClientPlayer(client)
+	// 	for (let [key, value] of Object.entries(player)) {
+	// 		if (value === oldplayer[key] || key === "lastActive") {
+	// 			continue
+	// 		} else {
+	// 			if (key === "roomid") {
+	// 				await this.handleRoomLeave(client)
+	// 				oldplayer.roomid = value
+	// 				await this.handleRoomJoin(client)
+	// 			}
+	// 			oldplayer[key] = value
+	// 		}
+	// 	}
+	// 	this.handlePlayerList(this.getClientRoomid(client))
+	// }
+
+	handleFetchAll(roomid:string ){
+		this.server.to(roomid).emit("fetchAll")
 	}
 
 	getClientUid(client: Socket): string {
