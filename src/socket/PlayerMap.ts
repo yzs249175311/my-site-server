@@ -42,12 +42,12 @@ export class PlayerMap {
 	validTrashPlayer(): void {
 		try{
 			let tmp: number
-			for (let player of this.playerMap.values()) {
+			for (let [key,player] of this.playerMap.entries()) {
 				tmp = Date.now() - player.lastActive
 				if (tmp > this.deleteTime) {
-					this.playerMap.delete(player.uid)
+					this.playerMap.delete(key)
 				} else if (tmp > this.leaveRoomTime) {
-					this.playerMap.get(player.uid).roomid = ""
+					this.playerMap.get(key).roomid = ""
 				}
 			}
 		} catch (e) {
