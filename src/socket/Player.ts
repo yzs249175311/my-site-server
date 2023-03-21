@@ -1,4 +1,4 @@
-import { Server } from 'socket.io';
+import { Server, Socket } from 'socket.io';
 
 export interface IPlayer {
 	id: string,
@@ -14,7 +14,11 @@ export interface IPlayerServer {
 	server: Server
 }
 
-export class Player implements IPlayer, IPlayerServer {
+export interface IPlayerClient {
+	client: Socket
+}
+
+export class Player implements IPlayer, IPlayerServer, IPlayerClient {
 	private _id: string
 	private _uid: string
 	private _name: string
@@ -23,16 +27,18 @@ export class Player implements IPlayer, IPlayerServer {
 	private _connected: boolean
 	private _lastActive: number
 	private _server: Server
+	private _client: Socket
 
-	constructor(id: string, uid: string, name: string, server: Server) {
+	constructor(id: string, uid: string, name: string, option: { server: Server, client: Socket }) {
 		this._id = id
 		this._uid = uid
 		this._name = name
-		this._server = server
 		this._money = 0
 		this._roomid = ""
 		this._connected = true
 		this._lastActive = Date.now()
+		this._server = option.server
+		this._client = option.client
 	}
 
 	active(flag?: boolean) {
@@ -71,6 +77,7 @@ export class Player implements IPlayer, IPlayerServer {
 	}
 
 	public set name(name) {
+		if (this._name == name) return
 		this.active()
 		this._name = name
 		this.notifyOther()
@@ -90,16 +97,29 @@ export class Player implements IPlayer, IPlayerServer {
 	}
 
 	public set roomid(roomid) {
+		if (this._roomid === roomid) return;
+
 		this.active()
-		this.notifyOther()
+		let oldRoomid = this._roomid
+
+		if (roomid === "") {
+			this._roomid = roomid
+			this.client.leave(oldRoomid)
+		}
+
+		this.client.leave(oldRoomid)
 		this._roomid = roomid
+		this.client.join(roomid)
+
+		this.notifyOther(oldRoomid)
 		this.notifyOther()
 	}
 
 	public get connected() {
 		return this._connected
 	}
-	public set connected(connected) {
+	public set connected(connected: boolean) {
+		if (this._connected === connected) return;
 		this._connected = connected
 		this.notifyOther()
 	}
@@ -109,16 +129,30 @@ export class Player implements IPlayer, IPlayerServer {
 	}
 
 	public get server() {
-		return this._server 
+		return this._server
 	}
 
-	public set server(server:Server) {
-		 this._server = server
-		this.notifyOther()
+	public set server(server: Server) {
+		this._server = server
+	}
+
+	public get client() {
+		return this._client
+	}
+
+	public set client(client: Socket) {
+		if(this.client === client){
+			return
+		}
+		if (this.connected) {
+			this.selfGetMessage( "你在另一个客户端上线了")
+			this._client.disconnect()
+		}
+		this._client = client
 	}
 
 	public connect() {
-		this._connected = false
+		this._connected = true
 		this.active(true)
 		this.notifyOther()
 	}
@@ -147,7 +181,28 @@ export class Player implements IPlayer, IPlayerServer {
 		this.notifyOther()
 	}
 
-	notifyOther(){
-		this.server.to(this.roomid).to(this.id).emit("fetchAll")
+	notifyOther(roomid?: string) {
+		if (roomid) {
+			this.server.to(roomid).emit("fetchAll")
+			return
+		}
+		this.server.to(this._roomid).to(this.id).emit("fetchAll")
+	}
+
+	getMoney(money:number){
+		this.money += money
+	}
+
+	payMoney(toPlayer:Player,money:number){
+		this.getMoney(-money)
+		toPlayer.getMoney(money)
+	}
+
+	selfGetMessage(msg: string){
+		this.client.emit("message",msg)
+	}
+
+	otherGetMessage(msg: string){
+		this.client.to(this.roomid).emit("message",msg)
 	}
 }

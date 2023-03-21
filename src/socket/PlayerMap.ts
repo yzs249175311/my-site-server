@@ -45,8 +45,11 @@ export class PlayerMap {
 			for (let [key,player] of this.playerMap.entries()) {
 				tmp = Date.now() - player.lastActive
 				if (tmp > this.deleteTime) {
+					player.selfGetMessage(`你长时间不在线或无操作，被删除!`)
 					this.playerMap.delete(key)
 				} else if (tmp > this.leaveRoomTime) {
+					player.selfGetMessage(`你长时间不在线或无操作，被踢出房间!`)
+					player.otherGetMessage(`<${player.name}>长时间不在线或无操作，被踢出房间!`)
 					this.playerMap.get(key).roomid = ""
 				}
 			}
