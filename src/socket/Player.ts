@@ -144,10 +144,11 @@ export class Player implements IPlayer, IPlayerServer, IPlayerClient {
 		if(this.client === client){
 			return
 		}
+
 		if (this.connected) {
-			this.selfGetMessage( "你在另一个客户端上线了")
-			this._client.disconnect()
+			this.logoutUnExpect()
 		}
+
 		this._client = client
 	}
 
@@ -161,6 +162,7 @@ export class Player implements IPlayer, IPlayerServer, IPlayerClient {
 		this.active()
 		this._connected = false
 		this.notifyOther()
+		this.client.disconnect()
 	}
 
 	getInfo(): IPlayer {
@@ -204,5 +206,10 @@ export class Player implements IPlayer, IPlayerServer, IPlayerClient {
 
 	otherGetMessage(msg: string){
 		this.client.to(this.roomid).emit("message",msg)
+	}
+
+	logoutUnExpect(){
+		this.selfGetMessage( "你在另一个客户端上线了")
+		this.disconnect()
 	}
 }

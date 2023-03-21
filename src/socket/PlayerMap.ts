@@ -47,10 +47,11 @@ export class PlayerMap {
 				if (tmp > this.deleteTime) {
 					player.selfGetMessage(`你长时间不在线或无操作，被删除!`)
 					this.playerMap.delete(key)
+					player.disconnect()
 				} else if (tmp > this.leaveRoomTime) {
 					player.selfGetMessage(`你长时间不在线或无操作，被踢出房间!`)
 					player.otherGetMessage(`<${player.name}>长时间不在线或无操作，被踢出房间!`)
-					this.playerMap.get(key).roomid = ""
+					player.roomid = ""
 				}
 			}
 		} catch (e) {

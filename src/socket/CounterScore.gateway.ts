@@ -51,10 +51,9 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 
 	// 处理客户端断开
 	handleDisconnect(@ConnectedSocket() client: Socket) {
-		let {uid} = this.getClientPlayer(client)
-		if (this.playerMap.hasPlayer(uid)) {
-			this.playerMap.getPlayer(uid).disconnect()
-			console.log("disconnect:"+uid)
+		let player = this.getClientPlayer(client)
+		if (player) {
+			player.disconnect()
 		}
 	}
 
@@ -65,23 +64,21 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 			let toPlayer = this.playerMap.getPlayer(payload.to.uid)
 
 			if (fromPlayer.money < payload.money) {
-				client.emit("message", "你的分数不够支付")
+				fromPlayer.selfGetMessage("你的分数不够支付")
 				return
 			}
 
 			if (fromPlayer.roomid !== toPlayer.roomid) {
-				client.emit("message", "你们不在一个房间")
+				fromPlayer.selfGetMessage("你们不在一个房间")
 				return
 			}
 
 			fromPlayer.payMoney(toPlayer,payload.money)
 
-			fromPlayer.selfGetMessage( `你 向 <${toPlayer.name}> 支付了 ${payload.money} 分`)
+			fromPlayer.selfGetMessage(`你 向 <${toPlayer.name}> 支付了 ${payload.money} 分`)
 			toPlayer.selfGetMessage(`<${fromPlayer.name}> 向 你 支付了 ${payload.money} 分`)
 			this.server.to(fromPlayer.roomid).except(fromPlayer.id).except(toPlayer.id)
 				.emit("message",`<${fromPlayer.name}> 向 <${toPlayer.name}> 支付了 ${payload.money} 分`)
-
-			// this.handleFetchAll(fromPlayer.roomid)
 		} else {
 			client.emit("message", "找不到这个人！")
 		}
