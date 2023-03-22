@@ -1,9 +1,9 @@
-import { Player,IPlayer } from "./Player"
+import { Player} from "./Player"
 
 export class PlayerMap {
 	playerMap: Map<string, Player> = new Map()
-	leaveRoomTime = 1000 * 60 * 10
-	deleteTime = 1000 * 60 * 30
+	leaveRoomTime = 1000 * 60 * 60
+	deleteTime = 1000 * 60 * 60 *24
 	trashTimer = null
 
 	pushPlayer(player: Player) {
@@ -26,18 +26,6 @@ export class PlayerMap {
 		return this.playerMap.get(uid)
 	}
 
-	filterByRoomid(roomid: string): Array<IPlayer> {
-		if (roomid == "") {
-			return []
-		}
-
-		let plist: Array<IPlayer> = []
-		for (let player of this.playerMap.values()) {
-			player.roomid == roomid && plist.push(player.getInfo())
-		}
-		return plist
-	}
-
 	//检查玩家离线的时间是否过长，删除或者提出房间
 	validTrashPlayer(): void {
 		try{
@@ -46,12 +34,13 @@ export class PlayerMap {
 				tmp = Date.now() - player.lastActive
 				if (tmp > this.deleteTime) {
 					player.selfGetMessage(`你长时间不在线或无操作，被删除!`)
+					player.roomLeave()
 					this.playerMap.delete(key)
 					player.disconnect()
 				} else if (tmp > this.leaveRoomTime) {
 					player.selfGetMessage(`你长时间不在线或无操作，被踢出房间!`)
 					player.otherGetMessage(`<${player.name}>长时间不在线或无操作，被踢出房间!`)
-					player.roomid = ""
+					player.roomLeave()
 				}
 			}
 		} catch (e) {

@@ -104,11 +104,9 @@ export class ZlibService {
       list.push(this.testUrl(domain)) 
     });
     let res =await Promise.all(list)
-    console.log("res==>",res)
     res.some((value,index) => {
       if(value==true){
         this.baseUrl=this.booksDomains[index]
-        console.log("set zlib domain:",this.booksDomains[index])
         return true
       }
       return false

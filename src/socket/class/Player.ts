@@ -1,12 +1,14 @@
 import { Server, Socket } from 'socket.io';
+import { Room, IRoom } from './Room';
 
 export interface IPlayer {
 	id: string,
-	uid: string,
+	uid: string | null,
 	name: string,
 	money: number,
-	roomid: string,
+	readonly roomid: string | null,
 	connected: boolean
+	currentRoom: null | Room
 	readonly lastActive: number
 }
 
@@ -18,27 +20,28 @@ export interface IPlayerClient {
 	client: Socket
 }
 
+export type PlayerInfo = Omit<IPlayer, "currentRoom">
+
 export class Player implements IPlayer, IPlayerServer, IPlayerClient {
 	private _id: string
 	private _uid: string
 	private _name: string
 	private _money: number
-	private _roomid: string
 	private _connected: boolean
 	private _lastActive: number
 	private _server: Server
 	private _client: Socket
+	private _currentRoom: Room
 
-	constructor(id: string, uid: string, name: string, option: { server: Server, client: Socket }) {
+	constructor(id: string, uid: string, name: string, option: IPlayerServer & IPlayerClient) {
 		this._id = id
 		this._uid = uid
 		this._name = name
 		this._money = 0
-		this._roomid = ""
 		this._connected = true
 		this._lastActive = Date.now()
 		this._server = option.server
-		this._client = option.client
+		this.client = option.client
 	}
 
 	active(flag?: boolean) {
@@ -77,8 +80,8 @@ export class Player implements IPlayer, IPlayerServer, IPlayerClient {
 	}
 
 	public set name(name) {
-		if (this._name == name) return
 		this.active()
+		if (this._name == name) return
 		this._name = name
 		this.notifyOther()
 	}
@@ -93,31 +96,16 @@ export class Player implements IPlayer, IPlayerServer, IPlayerClient {
 	}
 
 	public get roomid() {
-		return this._roomid
-	}
-
-	public set roomid(roomid) {
-		if (this._roomid === roomid) return;
-
-		this.active()
-		let oldRoomid = this._roomid
-
-		if (roomid === "") {
-			this._roomid = roomid
-			this.client.leave(oldRoomid)
+		if (this._currentRoom) {
+			return this._currentRoom.id
 		}
-
-		this.client.leave(oldRoomid)
-		this._roomid = roomid
-		this.client.join(roomid)
-
-		this.notifyOther(oldRoomid)
-		this.notifyOther()
+		return null
 	}
 
 	public get connected() {
 		return this._connected
 	}
+
 	public set connected(connected: boolean) {
 		if (this._connected === connected) return;
 		this._connected = connected
@@ -126,6 +114,14 @@ export class Player implements IPlayer, IPlayerServer, IPlayerClient {
 
 	public get lastActive() {
 		return this._lastActive
+	}
+
+	public get currentRoom() {
+		return this._currentRoom
+	}
+
+	public set currentRoom(room: Room) {
+		this._currentRoom = room
 	}
 
 	public get server() {
@@ -141,15 +137,24 @@ export class Player implements IPlayer, IPlayerServer, IPlayerClient {
 	}
 
 	public set client(client: Socket) {
-		if(this.client === client){
-			return
+		if (this.client) {
+			if (this.client === client) {
+				return
+			}
+
+			if (this.connected) {
+				this.logoutUnExpect()
+			}
+
+			this._client = client
+			this.connect()
+		} else {
+			this._client = client
 		}
 
-		if (this.connected) {
-			this.logoutUnExpect()
-		}
-
-		this._client = client
+		Reflect.defineProperty(this._client, "uid", {
+			value: this.uid,
+		})
 	}
 
 	public connect() {
@@ -159,13 +164,12 @@ export class Player implements IPlayer, IPlayerServer, IPlayerClient {
 	}
 
 	public disconnect() {
-		this.active()
 		this._connected = false
 		this.notifyOther()
 		this.client.disconnect()
 	}
 
-	getInfo(): IPlayer {
+	getInfo(): PlayerInfo {
 		return {
 			id: this.id,
 			uid: this.uid,
@@ -185,31 +189,58 @@ export class Player implements IPlayer, IPlayerServer, IPlayerClient {
 
 	notifyOther(roomid?: string) {
 		if (roomid) {
-			this.server.to(roomid).emit("fetchAll")
+			this.server.to(roomid).to(this.id).emit("fetchAll")
 			return
 		}
-		this.server.to(this._roomid).to(this.id).emit("fetchAll")
+		this.server.to(this.roomid).to(this.id).emit("fetchAll")
 	}
 
-	getMoney(money:number){
+	getMoney(fromPlayer:Player ,money: number) {
+		this.selfGetMessage(`<${fromPlayer.name}> 向 你 支付了 ${money} 分`)
 		this.money += money
 	}
 
-	payMoney(toPlayer:Player,money:number){
-		this.getMoney(-money)
-		toPlayer.getMoney(money)
+	payMoney(toPlayer: Player, money: number) {
+		this.active()
+		if (this.money < money) {
+			this.selfGetMessage("你的分数不够支付!")
+			return
+		}
+		if (!this.currentRoom || this.currentRoom !== toPlayer.currentRoom) {
+			this.selfGetMessage("你们不在一个房间!")
+			return
+		}
+
+		this.selfGetMessage(`你 向 <${toPlayer.name}> 支付了 ${money} 分`)
+		toPlayer.getMoney(this,money)
+		this.money -= money
+
+		this.server.to(this.roomid).except(this.id).except(toPlayer.id)
+			.emit("message", `<${this.name}> 向 <${toPlayer.name}> 支付了 ${money} 分`)
+
 	}
 
-	selfGetMessage(msg: string){
-		this.client.emit("message",msg)
+	selfGetMessage(msg: string) {
+		this.client.emit("message", msg)
 	}
 
-	otherGetMessage(msg: string){
-		this.client.to(this.roomid).emit("message",msg)
+	otherGetMessage(msg: string) {
+		this.client.to(this.roomid).emit("message", msg)
 	}
 
-	logoutUnExpect(){
-		this.selfGetMessage( "你在另一个客户端上线了")
+	logoutUnExpect() {
+		this.selfGetMessage("你在另一个客户端上线了")
 		this.disconnect()
+	}
+
+	roomJoin(room: Room, passwd?: string) {
+		this.active()
+		room.playerJoinRoom(this,passwd)
+	}
+
+	roomLeave() {
+		if (this.currentRoom) {
+			this.currentRoom.playerLeaveRoom(this)
+		}
 	}
 }
