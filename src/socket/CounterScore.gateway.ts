@@ -3,6 +3,7 @@ import { Socket, Server } from 'socket.io';
 import { IPlayer, Player } from './class/Player';
 import { PlayerMap } from './class/PlayerMap';
 import { RoomManager } from './class/RoomManager';
+import { IRoom, RoomType } from './class/Room';
 
 let Mock = require("mockjs")
 
@@ -23,7 +24,19 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 	constructor() {
 		this.playerMap = new PlayerMap()
 		this.playerMap.enableTrashPlayerTimer(60 * 1000)
-		this.roomManager = new RoomManager(1)
+		this.roomManager = new RoomManager()
+		this.roomManager.createRoom({
+			id: "main-1",
+			name: "main-1",
+			roomType: RoomType.ALWAYS
+		})
+
+		this.roomManager.createRoom({
+			id: "private-2",
+			name: "private-2",
+			passwd: "123456",
+			roomType: RoomType.ALWAYS
+		})
 	}
 
 	handleConnection(@ConnectedSocket() client: Socket) {
@@ -34,11 +47,14 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 			player = this.playerMap.getPlayer(uid)
 			player.id = client.id
 			player.client = client
-			player.roomJoin(player.currentRoom)
+			if (player.currentRoom) {
+				player.roomJoin(this.roomManager.getRoom(player.currentRoom.id))
+			}
 		} else {
 			player = new Player(client.id, client.id, Mock.mock("@cname"), {
 				server: this.server,
-				client: client
+				client: client,
+				roomManager: this.roomManager,
 			})
 			this.playerMap.pushPlayer(player)
 		}
@@ -60,7 +76,7 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 		let fromPlayer = this.getClientPlayer(client)
 		let toPlayer = this.playerMap.getPlayer(payload.to.uid)
 
-		if (fromPlayer.currentRoom === toPlayer.currentRoom) {
+		if (toPlayer && fromPlayer && fromPlayer.currentRoom === toPlayer.currentRoom) {
 			fromPlayer.payMoney(toPlayer, payload.money)
 		} else {
 			client.emit("message", "找不到这个人！")
@@ -82,12 +98,15 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 		let player = this.getClientPlayer(client)
 		if (player && player.currentRoom) {
 			client.emit('updateRoomInfo', player.currentRoom.getInfo())
+		}else{
+			client.emit('updateRoomInfo', null)
 		}
 	}
 
 	@SubscribeMessage('fetchRooms')
 	async handleRooms(@ConnectedSocket() client: Socket) {
-		this.server.to(client.id).emit('updateRooms', this.roomManager.getInfo())
+
+		client.emit('updateRooms', this.roomManager.getInfo())
 	}
 
 
@@ -104,15 +123,24 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 		this.server.to(this.getClientPlayer(client).roomid).to(client.id).emit("message", getTime() + " " + msg)
 	}
 
+	@SubscribeMessage('roomCreate')
+	handleRoomCreate(@ConnectedSocket() client: Socket, @MessageBody() roomOption: { roomName: string, roomPasswd: string, roomType: RoomType }) {
+		let player = this.getClientPlayer(client)
+		player && player.roomCreate({
+			id:player.id+"-"+1,
+			name:roomOption.roomName,
+			roomType:roomOption.roomType,
+			passwd:roomOption.roomPasswd,
+		})
+	}
+
 	//进入房间
 	@SubscribeMessage('roomJoin')
-	async handleRoomJoin(@ConnectedSocket() client: Socket, @MessageBody() toRoomid: string) {
+	async handleRoomJoin(@ConnectedSocket() client: Socket, @MessageBody() toRoom: IRoom) {
 		let player = this.getClientPlayer(client)
-		let room = this.roomManager.getRoom(toRoomid)
+		let room = this.roomManager.getRoom(toRoom.id)
 
-		if (player && room) {
-			player.roomJoin(room)
-		}
+		player.roomJoin(room, toRoom.passwd)
 	}
 
 	//离开房间

@@ -1,8 +1,8 @@
-import { Player, PlayerInfo } from "./Player";
+import { IPlayer,Player, PlayerInfo } from "./Player";
 import { RoomManager } from "./RoomManager";
 
 export enum RoomType {
-	PRIVATE,
+	PRIVATE=1,
 	PUBLIC,
 	ALWAYS
 }
@@ -17,7 +17,10 @@ export interface IRoom {
 	readonly playerList: Array<PlayerInfo>
 }
 
-export type RoomOption = Pick<IRoom, "id" | "name"> & Partial<Pick<IRoom, "passwd" | "owner" | "roomType">>
+export type RoomInfo = Omit<IRoom,"owner"> & {owner:Pick<IPlayer,"id"|"name">}
+
+
+export type RoomOption = Pick<IRoom, "id" | "name" | "roomType"> & Partial<Pick<IRoom, "passwd" | "owner">>
 
 
 export class Room implements IRoom {
@@ -99,7 +102,7 @@ export class Room implements IRoom {
 				player.selfGetMessage(`你进入房间 ${this.name}`)
 				player.otherGetMessage(`<${player.name}> 进入房间 ${this.name}`)
 			} else {
-				player.selfGetMessage(`密码错误`)
+				player.selfGetErrorMessage(`密码错误`)
 			}
 		} else {
 			player.selfGetMessage("进入房间错误")
@@ -135,12 +138,15 @@ export class Room implements IRoom {
 		}
 	}
 
-	public getInfo(): IRoom {
+	public getInfo(): RoomInfo{
 		return {
 			id: this.id,
 			name: this.name,
 			passwd: this.passwd,
-			owner: this.owner,
+			owner: this.owner?{
+				id:this.owner.id,
+				name:this.owner.name
+			}:null,
 			roomType: this.roomType,
 			playerCount: this.playerCount,
 			playerList: this.playerList,

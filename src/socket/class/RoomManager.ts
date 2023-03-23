@@ -1,42 +1,52 @@
 import { Player } from "./Player";
-import { IRoom, Room, RoomOption, RoomType } from "./Room";
+import { IRoom, Room, RoomOption, RoomType, RoomInfo } from "./Room";
 
 export class RoomManager {
 	private _roomMap: Map<string, Room>
 
-	constructor(num: number) {
+	constructor() {
 		this._roomMap = new Map<string, Room>()
-
-		while (num > 0) {
-			this._roomMap.set("main-" + num, new Room({
-				id:"main-"+num,
-				name:"main-"+num,
-				roomType:RoomType.ALWAYS
-			},this))
-			num--
-		}
 	}
 
-	createRoom(roomOption: RoomOption,player?:Player) {
-		let room = new Room(roomOption,this)
-
-		if(player){
-			room.owner=player
+	createRoom(roomOption: RoomOption, player?: Player) {
+		if (this.hasRoom(roomOption.id)) {
+			let count = 1
+			while (count < 10) {
+				if (!this.hasRoom(roomOption.id + "-" + count)) {
+					return
+				}
+				count++
+			}
+			roomOption.id = roomOption.id + "-" + count
 		}
 
-		this._roomMap.set(room.id, room)
+		if (!this.hasRoom(roomOption.id)) {
+			let room = new Room(roomOption, this)
+			this._roomMap.set(room.id, room)
+			if (player) {
+				room.owner = player
+				player.roomJoin(room,roomOption.passwd)
+			}
+		}else{
+			player.selfGetErrorMessage("创建房间失败")
+		}
+
 	}
 
 	getRoom(roomid: string) {
 		return this._roomMap.get(roomid)
 	}
 
-	deleteRoom(roomid: string){
+	hasRoom(roomid: string): boolean {
+		return this._roomMap.has(roomid)
+	}
+
+	deleteRoom(roomid: string) {
 		this._roomMap.delete(roomid)
 	}
 
-	getInfo(): Array<IRoom> {
-		let arr: Array<IRoom> = []
+	getInfo(): Array<RoomInfo> {
+		let arr: Array<RoomInfo> = []
 
 		for (let room of this._roomMap.values()) {
 			arr.push(room.getInfo())

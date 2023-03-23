@@ -1,5 +1,6 @@
 import { Server, Socket } from 'socket.io';
-import { Room, IRoom } from './Room';
+import { Room,  RoomOption,  RoomType } from './Room';
+import { RoomManager } from './RoomManager';
 
 export interface IPlayer {
 	id: string,
@@ -12,17 +13,16 @@ export interface IPlayer {
 	readonly lastActive: number
 }
 
-export interface IPlayerServer {
-	server: Server
-}
+export interface PlayerOption{
 
-export interface IPlayerClient {
-	client: Socket
+	client: Socket,
+	readonly server: Server,
+	readonly roomManager: RoomManager,
 }
 
 export type PlayerInfo = Omit<IPlayer, "currentRoom">
 
-export class Player implements IPlayer, IPlayerServer, IPlayerClient {
+export class Player implements IPlayer, PlayerOption  {
 	private _id: string
 	private _uid: string
 	private _name: string
@@ -32,8 +32,9 @@ export class Player implements IPlayer, IPlayerServer, IPlayerClient {
 	private _server: Server
 	private _client: Socket
 	private _currentRoom: Room
+	private _roomManager: RoomManager
 
-	constructor(id: string, uid: string, name: string, option: IPlayerServer & IPlayerClient) {
+	constructor(id: string, uid: string, name: string, option: PlayerOption) {
 		this._id = id
 		this._uid = uid
 		this._name = name
@@ -42,6 +43,7 @@ export class Player implements IPlayer, IPlayerServer, IPlayerClient {
 		this._lastActive = Date.now()
 		this._server = option.server
 		this.client = option.client
+		this._roomManager = option.roomManager
 	}
 
 	active(flag?: boolean) {
@@ -128,8 +130,8 @@ export class Player implements IPlayer, IPlayerServer, IPlayerClient {
 		return this._server
 	}
 
-	public set server(server: Server) {
-		this._server = server
+	public get roomManager(){
+		return this._roomManager
 	}
 
 	public get client() {
@@ -187,12 +189,15 @@ export class Player implements IPlayer, IPlayerServer, IPlayerClient {
 		this.notifyOther()
 	}
 
-	notifyOther(roomid?: string) {
+	notifyOther(roomid?:string,self:boolean=true) {
 		if (roomid) {
-			this.server.to(roomid).to(this.id).emit("fetchAll")
-			return
+			this.client.to(roomid).emit("fetchAll")
 		}
-		this.server.to(this.roomid).to(this.id).emit("fetchAll")
+		this.client.to(this.roomid).emit("fetchAll")
+		
+		if(self){
+			this.client.emit("fetchAll")
+		}
 	}
 
 	getMoney(fromPlayer:Player ,money: number) {
@@ -223,6 +228,10 @@ export class Player implements IPlayer, IPlayerServer, IPlayerClient {
 	selfGetMessage(msg: string) {
 		this.client.emit("message", msg)
 	}
+	
+	selfGetErrorMessage(msg: string) {
+		this.client.emit("error", msg)
+	}
 
 	otherGetMessage(msg: string) {
 		this.client.to(this.roomid).emit("message", msg)
@@ -233,12 +242,21 @@ export class Player implements IPlayer, IPlayerServer, IPlayerClient {
 		this.disconnect()
 	}
 
+	roomCreate(room:RoomOption){
+		this._roomManager.createRoom(room,this)
+	}
+
 	roomJoin(room: Room, passwd?: string) {
 		this.active()
-		room.playerJoinRoom(this,passwd)
+		if(room){
+			room.playerJoinRoom(this,passwd)
+		}else{
+			this.selfGetErrorMessage("这个房间不存在了！")
+		}
 	}
 
 	roomLeave() {
+		this.active()
 		if (this.currentRoom) {
 			this.currentRoom.playerLeaveRoom(this)
 		}
