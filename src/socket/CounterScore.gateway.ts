@@ -79,7 +79,7 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 		if (toPlayer && fromPlayer && fromPlayer.currentRoom === toPlayer.currentRoom) {
 			fromPlayer.payMoney(toPlayer, payload.money)
 		} else {
-			client.emit("message", "找不到这个人！")
+			client.emit("msgFail", "找不到这个人！");
 		}
 	}
 
@@ -120,7 +120,12 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 
 	@SubscribeMessage('message')
 	handleMessage(@ConnectedSocket() client: Socket, @MessageBody() msg: string) {
-		this.server.to(this.getClientPlayer(client).roomid).to(client.id).emit("message", getTime() + " " + msg)
+		this.getClientPlayer(client)?.currentRoom.playersGetMessage(msg)
+	}
+
+	@SubscribeMessage('clearRecord')
+	handleClearRecord(@ConnectedSocket() client: Socket) {
+		this.getClientPlayer(client).clearRecord()
 	}
 
 	@SubscribeMessage('roomCreate')
@@ -147,6 +152,13 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 	@SubscribeMessage('roomLeave')
 	async handleRoomLeave(@ConnectedSocket() client: Socket) {
 		let player = this.getClientPlayer(client)
+		player.roomLeave()
+	}
+
+	//踢出房间
+	@SubscribeMessage('playerOut')
+	async handlePlyaerOut(@MessageBody() uid: string) {
+		let player = this.playerMap.getPlayer(uid);
 		player.roomLeave()
 	}
 

@@ -37,7 +37,7 @@ export class PlayerMap {
 					player.roomLeave()
 					this.playerMap.delete(key)
 					player.disconnect()
-				} else if (tmp > this.leaveRoomTime) {
+				} else if (tmp > this.leaveRoomTime && player.currentRoom) {
 					player.selfGetMessage(`你长时间不在线或无操作，被踢出房间!`)
 					player.otherGetMessage(`<${player.name}>长时间不在线或无操作，被踢出房间!`)
 					player.roomLeave()

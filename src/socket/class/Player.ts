@@ -1,6 +1,7 @@
 import { Server, Socket } from 'socket.io';
-import { Room,  RoomOption,  RoomType } from './Room';
+import { Room, RoomOption, RoomType } from './Room';
 import { RoomManager } from './RoomManager';
+import { getTime } from "./dateUtil"
 
 export interface IPlayer {
 	id: string,
@@ -11,9 +12,10 @@ export interface IPlayer {
 	connected: boolean
 	currentRoom: null | Room
 	readonly lastActive: number
+	records: Array<string> | null
 }
 
-export interface PlayerOption{
+export interface PlayerOption {
 
 	client: Socket,
 	readonly server: Server,
@@ -22,7 +24,7 @@ export interface PlayerOption{
 
 export type PlayerInfo = Omit<IPlayer, "currentRoom">
 
-export class Player implements IPlayer, PlayerOption  {
+export class Player implements IPlayer, PlayerOption {
 	private _id: string
 	private _uid: string
 	private _name: string
@@ -33,6 +35,7 @@ export class Player implements IPlayer, PlayerOption  {
 	private _client: Socket
 	private _currentRoom: Room
 	private _roomManager: RoomManager
+	private _records: Array<string>
 
 	constructor(id: string, uid: string, name: string, option: PlayerOption) {
 		this._id = id
@@ -44,6 +47,7 @@ export class Player implements IPlayer, PlayerOption  {
 		this._server = option.server
 		this.client = option.client
 		this._roomManager = option.roomManager
+		this._records = new Array<string>()
 	}
 
 	active(flag?: boolean) {
@@ -126,11 +130,19 @@ export class Player implements IPlayer, PlayerOption  {
 		this._currentRoom = room
 	}
 
+	public get records() {
+		return this._records
+	}
+
+	public set records(records:Array<string>) {
+		this._records = records
+	}
+
 	public get server() {
 		return this._server
 	}
 
-	public get roomManager(){
+	public get roomManager() {
 		return this._roomManager
 	}
 
@@ -180,6 +192,7 @@ export class Player implements IPlayer, PlayerOption  {
 			money: this.money,
 			connected: this.connected,
 			lastActive: this.lastActive,
+			records: this.records,
 		}
 	}
 
@@ -189,52 +202,62 @@ export class Player implements IPlayer, PlayerOption  {
 		this.notifyOther()
 	}
 
-	notifyOther(roomid?:string,self:boolean=true) {
+	notifyOther(roomid?: string, self: boolean = true) {
 		if (roomid) {
 			this.client.to(roomid).emit("fetchAll")
 		}
 		this.client.to(this.roomid).emit("fetchAll")
-		
-		if(self){
+
+		if (self) {
 			this.client.emit("fetchAll")
 		}
 	}
 
-	getMoney(fromPlayer:Player ,money: number) {
-		this.selfGetMessage(`<${fromPlayer.name}> 向 你 支付了 ${money} 分`)
+	getMoney(fromPlayer: Player, money: number) {
 		this.money += money
+		this.selfGetMessage(`<${fromPlayer.name}> 向 你 支付了 ${money} 分`)
+		this.selfGetSuccessMessage(`<${fromPlayer.name}> 向 你 支付了 ${money} 分`);
 	}
 
 	payMoney(toPlayer: Player, money: number) {
 		this.active()
 		if (this.money < money) {
-			this.selfGetMessage("你的分数不够支付!")
+			this.selfGetErrorMessage("你的分数不够支付!")
 			return
 		}
 		if (!this.currentRoom || this.currentRoom !== toPlayer.currentRoom) {
-			this.selfGetMessage("你们不在一个房间!")
+			this.selfGetErrorMessage("你们不在一个房间!")
 			return
 		}
 
-		this.selfGetMessage(`你 向 <${toPlayer.name}> 支付了 ${money} 分`)
-		toPlayer.getMoney(this,money)
+		toPlayer.getMoney(this, money)
 		this.money -= money
-
-		this.server.to(this.roomid).except(this.id).except(toPlayer.id)
-			.emit("message", `<${this.name}> 向 <${toPlayer.name}> 支付了 ${money} 分`)
-
+		this.selfGetMessage(`你 向 <${toPlayer.name}> 支付了 ${money} 分`)
+		this.selfGetSuccessMessage("支付成功");
 	}
 
 	selfGetMessage(msg: string) {
-		this.client.emit("message", msg)
+		this.records.unshift(getTime() + " " + msg);
+		this.client.emit("message", this.records);
 	}
-	
+
 	selfGetErrorMessage(msg: string) {
-		this.client.emit("error", msg)
+		this.client.emit("msgFail", msg);
+	}
+
+
+	selfGetSuccessMessage(msg: string) {
+		this.client.emit("msgSuccess", msg);
 	}
 
 	otherGetMessage(msg: string) {
-		this.client.to(this.roomid).emit("message", msg)
+		this.currentRoom.playersGetMessage(msg,this)
+		// this.client.to(this.roomid).emit("message", getTime() + " " + msg);
+	}
+
+	clearRecord(){
+		this.records = [];
+		this.client.emit("message", this.records);
 	}
 
 	logoutUnExpect() {
@@ -242,21 +265,20 @@ export class Player implements IPlayer, PlayerOption  {
 		this.disconnect()
 	}
 
-	roomCreate(room:RoomOption){
-		this._roomManager.createRoom(room,this)
+	roomCreate(room: RoomOption) {
+		this._roomManager.createRoom(room, this)
 	}
 
 	roomJoin(room: Room, passwd?: string) {
 		this.active()
-		if(room){
-			room.playerJoinRoom(this,passwd)
-		}else{
+		if (room) {
+			room.playerJoinRoom(this, passwd)
+		} else {
 			this.selfGetErrorMessage("这个房间不存在了！")
 		}
 	}
 
 	roomLeave() {
-		this.active()
 		if (this.currentRoom) {
 			this.currentRoom.playerLeaveRoom(this)
 		}

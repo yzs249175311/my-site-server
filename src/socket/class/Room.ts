@@ -1,8 +1,9 @@
-import { IPlayer,Player, PlayerInfo } from "./Player";
+import { IPlayer, Player, PlayerInfo } from "./Player";
 import { RoomManager } from "./RoomManager";
+import { getTime } from "./dateUtil";
 
 export enum RoomType {
-	PRIVATE=1,
+	PRIVATE = 1,
 	PUBLIC,
 	ALWAYS
 }
@@ -17,7 +18,7 @@ export interface IRoom {
 	readonly playerList: Array<PlayerInfo>
 }
 
-export type RoomInfo = Omit<IRoom,"owner"> & {owner:Pick<IPlayer,"id"|"name">}
+export type RoomInfo = Omit<IRoom, "owner"> & { owner: Pick<IPlayer, "id" | "name"> }
 
 
 export type RoomOption = Pick<IRoom, "id" | "name" | "roomType"> & Partial<Pick<IRoom, "passwd" | "owner">>
@@ -90,8 +91,8 @@ export class Room implements IRoom {
 			player.roomLeave()
 			this.registerPlayer(player)
 			player.notifyOther()
-			player.selfGetMessage(`你进入房间 ${this.name}`)
-			player.otherGetMessage(`<${player.name}> 进入房间 ${this.name}`)
+			// player.selfGetMessage(`你进入房间 ${this.name}`)
+			// player.otherGetMessage(`<${player.name}> 进入房间 ${this.name}`)
 		} else if (this._playerSet.has(player) && !player.client.rooms.has(this.id)) {
 			player.client.join(this.id)
 		} else if (passwd) {
@@ -99,20 +100,20 @@ export class Room implements IRoom {
 				player.roomLeave()
 				this.registerPlayer(player)
 				player.notifyOther()
-				player.selfGetMessage(`你进入房间 ${this.name}`)
-				player.otherGetMessage(`<${player.name}> 进入房间 ${this.name}`)
+				// player.selfGetMessage(`你进入房间 ${this.name}`)
+				// player.otherGetMessage(`<${player.name}> 进入房间 ${this.name}`)
 			} else {
 				player.selfGetErrorMessage(`密码错误`)
 			}
 		} else {
-			player.selfGetMessage("进入房间错误")
+			player.selfGetErrorMessage("进入房间错误")
 		}
 	}
 
 	public playerLeaveRoom(player: Player) {
 		if (this._playerSet.has(player)) {
-			player.selfGetMessage(`你离开房间 ${this.name}`)
-			player.otherGetMessage(`<${player.name}> 离开房间 ${this.name}`)
+			// player.selfGetMessage(`你离开房间 ${this.name}`)
+			// player.otherGetMessage(`<${player.name}> 离开房间 ${this.name}`)
 			this.logoutPlayer(player)
 			player.notifyOther(this.id)
 		}
@@ -132,21 +133,31 @@ export class Room implements IRoom {
 		this.tryDestory()
 	}
 
+	//房间里的成员获取信息
+	public playersGetMessage(msg: string, expect?: Player) {
+		for (let player of this._playerSet.values()) {
+			if(expect === player){
+				return
+			}
+			player.selfGetMessage(msg);
+		}
+	}
+
 	private tryDestory() {
 		if (this.playerCount <= 0 && this.roomType !== RoomType.ALWAYS) {
 			this._roomManager.deleteRoom(this.id)
 		}
 	}
 
-	public getInfo(): RoomInfo{
+	public getInfo(): RoomInfo {
 		return {
 			id: this.id,
 			name: this.name,
 			passwd: this.passwd,
-			owner: this.owner?{
-				id:this.owner.id,
-				name:this.owner.name
-			}:null,
+			owner: this.owner ? {
+				id: this.owner.id,
+				name: this.owner.name
+			} : null,
 			roomType: this.roomType,
 			playerCount: this.playerCount,
 			playerList: this.playerList,
