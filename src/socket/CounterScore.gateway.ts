@@ -37,9 +37,9 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 
 	handleConnection(@ConnectedSocket() client: Socket) {
 		let player: Player | null = null;
-		let uid = client.handshake.query.uid
+		let uid = client.handshake.auth.uid || null
 
-		if (uid && uid !== "" && (typeof uid === "string") && this.playerMap.hasPlayer(uid)) {
+		if (uid && this.playerMap.hasPlayer(uid)) {
 			player = this.playerMap.getPlayer(uid)
 			player.id = client.id
 			player.client = client
