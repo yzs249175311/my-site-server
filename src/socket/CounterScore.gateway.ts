@@ -176,7 +176,7 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 
 	//踢出房间
 	@SubscribeMessage('playerOut')
-	async handlePlyaerOut(@MessageBody() uid: string) {
+	async handlePlayerOut(@MessageBody() uid: string) {
 		let player = this.playerMap.getPlayer(uid);
 		player.roomLeave()
 	}
