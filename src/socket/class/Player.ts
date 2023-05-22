@@ -1,7 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { Room, RoomOption, RoomType } from './Room';
 import { RoomManager } from './RoomManager';
-import { getTime } from "./dateUtil"
+import { IMessage, Message, MessageType } from './Message';
 
 export interface IPlayer {
 	id: string,
@@ -13,6 +13,7 @@ export interface IPlayer {
 	connected: boolean
 	currentRoom: null | Room
 	readonly lastActive: number
+	recordsCache: Array<Message>
 	records: Array<string> | null
 }
 
@@ -37,6 +38,7 @@ export class Player implements IPlayer, PlayerOption {
 	private _client: Socket
 	private _currentRoom: Room
 	private _roomManager: RoomManager
+	private _recordsCache: Array<Message>
 	private _records: Array<string>
 
 	constructor(id: string, uid: string, name: string, option: PlayerOption) {
@@ -49,6 +51,7 @@ export class Player implements IPlayer, PlayerOption {
 		this._server = option.server
 		this.client = option.client
 		this._roomManager = option.roomManager
+		this._recordsCache = new Array<Message>()
 		this._records = new Array<string>()
 	}
 
@@ -142,6 +145,14 @@ export class Player implements IPlayer, PlayerOption {
 		this._currentRoom = room
 	}
 
+	public get recordsCache() {
+		return this._recordsCache
+	}
+
+	public set recordsCache(records: Array<Message>) {
+		this._recordsCache = records
+	}
+
 	public get records() {
 		return this._records
 	}
@@ -204,6 +215,7 @@ export class Player implements IPlayer, PlayerOption {
 			money: this.money,
 			connected: this.connected,
 			lastActive: this.lastActive,
+			recordsCache: this.recordsCache,
 			records: this.records,
 		}
 	}
@@ -233,44 +245,58 @@ export class Player implements IPlayer, PlayerOption {
 
 	getMoney(fromPlayer: Player, money: number) {
 		this.money += money
-		this.selfGetMessage(`<${fromPlayer.name}> 向 你 支付了 ${money} 分`)
-		this.selfGetSuccessMessage(`<${fromPlayer.name}> 向 你 支付了 ${money} 分`);
+		this.selfGetMessage(new Message({
+			type: MessageType.PAY,
+			from: fromPlayer.getInfo(),
+			content: money.toString()
+		}))
 	}
 
 	payMoney(toPlayer: Player, money: number) {
 		this.active()
 		if (this.money < money) {
-			this.selfGetErrorMessage("你的分数不够支付!")
+			this.selfGetMessage(new Message({
+				type: MessageType.FAIL,
+				content: "你的分数不够支付!"
+			}))
 			return
 		}
 		if (!this.currentRoom || this.currentRoom !== toPlayer.currentRoom) {
-			this.selfGetErrorMessage("你们不在一个房间!")
+			this.selfGetMessage(new Message({
+				type: MessageType.FAIL,
+				content: "你们不在一个房间!"
+			}))
 			return
 		}
 
 		toPlayer.getMoney(this, money)
 		this.money -= money
-		this.selfGetMessage(`你 向 <${toPlayer.name}> 支付了 ${money} 分`)
-		this.selfGetSuccessMessage("支付成功");
+		this.selfGetMessage(new Message({
+			type: MessageType.SUCCESS,
+			content: "支付给" + toPlayer.name + money + "分"
+		}))
 	}
 
-	selfGetMessage(msg: string) {
-		this.records.unshift(getTime() + " " + msg);
+	selfGetMessage(msg: Message) {
+		msg.handleTo(this)
 		this.client.emit("message", this.records);
 	}
 
-	selfGetErrorMessage(msg: string) {
-		this.client.emit("msgFail", msg);
+	//获得通知,前端自己决定展不展示
+	selfGetNotify(msg: Message) {
+		if (!this.connected) {
+			this._recordsCache.push(msg)
+			return
+		}
+		this.client.emit("messageNotify", msg);
 	}
 
-
-	selfGetSuccessMessage(msg: string) {
-		this.client.emit("msgSuccess", msg);
-	}
-
-	otherGetMessage(msg: string) {
+	otherGetMessage(msg: Message) {
 		this.currentRoom.playersGetMessage(msg, this)
-		// this.client.to(this.roomid).emit("message", getTime() + " " + msg);
+	}
+
+	clearCacheRecords() {
+		this.recordsCache = [];
 	}
 
 	clearRecord() {
@@ -279,7 +305,10 @@ export class Player implements IPlayer, PlayerOption {
 	}
 
 	logoutUnExpect() {
-		this.selfGetMessage("你在另一个客户端上线了")
+		this.selfGetMessage(new Message({
+			type: MessageType.FAIL,
+			content: "你在另一个客户端上线了"
+		}))
 		this.disconnect()
 	}
 
@@ -292,7 +321,10 @@ export class Player implements IPlayer, PlayerOption {
 		if (room) {
 			room.playerJoinRoom(this, passwd)
 		} else {
-			this.selfGetErrorMessage("这个房间不存在了！")
+			this.selfGetMessage(new Message({
+				type: MessageType.FAIL,
+				content: "这个房间不存在了！",
+			}))
 		}
 	}
 

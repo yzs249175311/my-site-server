@@ -1,9 +1,10 @@
-import { Player} from "./Player"
+import { Message, MessageType } from "./Message"
+import { Player } from "./Player"
 
 export class PlayerMap {
 	playerMap: Map<string, Player> = new Map()
 	leaveRoomTime = 1000 * 60 * 60
-	deleteTime = 1000 * 60 * 60 *24
+	deleteTime = 1000 * 60 * 60 * 24
 	trashTimer = null
 
 	pushPlayer(player: Player) {
@@ -28,18 +29,27 @@ export class PlayerMap {
 
 	//检查玩家离线的时间是否过长，删除或者提出房间
 	validTrashPlayer(): void {
-		try{
+		try {
 			let tmp: number
-			for (let [key,player] of this.playerMap.entries()) {
+			for (let [key, player] of this.playerMap.entries()) {
 				tmp = Date.now() - player.lastActive
 				if (tmp > this.deleteTime) {
-					player.selfGetMessage(`你长时间不在线或无操作，被删除!`)
+					player.selfGetMessage(new Message({
+						type: MessageType.SYSTEM,
+						content: "你长时间不在线或无操作",
+					}))
 					player.roomLeave()
 					this.playerMap.delete(key)
 					player.disconnect()
 				} else if (tmp > this.leaveRoomTime && player.currentRoom) {
-					player.selfGetMessage(`你长时间不在线或无操作，被踢出房间!`)
-					player.otherGetMessage(`<${player.name}>长时间不在线或无操作，被踢出房间!`)
+					player.selfGetMessage(new Message({
+						type: MessageType.SYSTEM,
+						content: "你长时间不在线或无操作，被踢出房间!"
+					}))
+					player.otherGetMessage(new Message({
+						type: MessageType.SYSTEM,
+						content: `<${player.name}>长时间不在线或无操作，被踢出房间!`
+					}))
 					player.roomLeave()
 				}
 			}

@@ -1,3 +1,4 @@
+import { Message, MessageType } from "./Message";
 import { Player } from "./Player";
 import { IRoom, Room, RoomOption, RoomType, RoomInfo } from "./Room";
 
@@ -25,10 +26,13 @@ export class RoomManager {
 			this._roomMap.set(room.id, room)
 			if (player) {
 				room.owner = player
-				player.roomJoin(room,roomOption.passwd)
+				player.roomJoin(room, roomOption.passwd)
 			}
-		}else{
-			player.selfGetErrorMessage("创建房间失败")
+		} else {
+			player.selfGetMessage(new Message({
+				type:MessageType.FAIL,
+				content:"创建房间失败"
+			}))
 		}
 
 	}

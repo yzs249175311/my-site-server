@@ -4,13 +4,9 @@ import { IPlayer, Player } from './class/Player';
 import { PlayerMap } from './class/PlayerMap';
 import { RoomManager } from './class/RoomManager';
 import { IRoom, RoomType } from './class/Room';
+import { Message, MessageType } from './class/Message';
 
 let Mock = require("mockjs")
-
-function getTime() {
-	let date = new Date()
-	return date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds().toString().padStart(2, "0")
-}
 
 @WebSocketGateway(3001, { cors: { origin: "*", } })
 export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -139,12 +135,20 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 
 	@SubscribeMessage('message')
 	handleMessage(@ConnectedSocket() client: Socket, @MessageBody() msg: string) {
-		this.getClientPlayer(client)?.currentRoom.playersGetMessage(msg)
+		this.getClientPlayer(client)?.currentRoom.playersGetMessage(new Message({
+			type: MessageType.SYSTEM,
+			content: msg
+		}))
 	}
 
 	@SubscribeMessage('clearRecord')
 	handleClearRecord(@ConnectedSocket() client: Socket) {
 		this.getClientPlayer(client).clearRecord()
+	}
+
+	@SubscribeMessage('clearCacheRecord')
+	handleClearCacheRecord(@ConnectedSocket() client: Socket) {
+		this.getClientPlayer(client)?.clearCacheRecords()
 	}
 
 	@SubscribeMessage('roomCreate')

@@ -1,3 +1,4 @@
+import { IMessage, Message, MessageType } from "./Message";
 import { IPlayer, Player, PlayerInfo } from "./Player";
 import { RoomManager } from "./RoomManager";
 
@@ -107,10 +108,16 @@ export class Room implements IRoom {
 				// player.selfGetMessage(`你进入房间 ${this.name}`)
 				// player.otherGetMessage(`<${player.name}> 进入房间 ${this.name}`)
 			} else {
-				player.selfGetErrorMessage(`密码错误`)
+				player.selfGetMessage(new Message({
+					type: MessageType.FAIL,
+					content: "密码错误",
+				}))
 			}
 		} else {
-			player.selfGetErrorMessage("进入房间错误")
+			player.selfGetMessage(new Message({
+				type: MessageType.FAIL,
+				content: "进入房间错误",
+			}))
 		}
 	}
 
@@ -138,7 +145,7 @@ export class Room implements IRoom {
 	}
 
 	//房间里的成员获取信息
-	public playersGetMessage(msg: string, expect?: Player) {
+	public playersGetMessage(msg: Message, expect?: Player) {
 		for (let player of this._playerSet.values()) {
 			if (expect === player) {
 				return
