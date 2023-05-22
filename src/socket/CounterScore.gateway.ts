@@ -98,7 +98,7 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 		let player = this.getClientPlayer(client)
 		if (player && player.currentRoom) {
 			client.emit('updateRoomInfo', player.currentRoom.getInfo())
-		}else{
+		} else {
 			client.emit('updateRoomInfo', null)
 		}
 	}
@@ -118,6 +118,25 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 		}
 	}
 
+
+	@SubscribeMessage('fetchIcons')
+	handleUpdatePlayerListIcon(@ConnectedSocket() client: Socket) {
+		let player = this.getClientPlayer(client)
+		if (player && player.currentRoom) {
+			client.emit('updateIcons', player.currentRoom.getIconInfo())
+		}
+	}
+
+	@SubscribeMessage('updateUserIcon')
+	handleUpdateUserIcon(@ConnectedSocket() client: Socket, @MessageBody() icon: string) {
+		let player = this.getClientPlayer(client)
+		if (player) {
+			player.icon = icon
+			player.notifyOtherUpdateIcon()
+		}
+	}
+
+
 	@SubscribeMessage('message')
 	handleMessage(@ConnectedSocket() client: Socket, @MessageBody() msg: string) {
 		this.getClientPlayer(client)?.currentRoom.playersGetMessage(msg)
@@ -132,10 +151,10 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 	handleRoomCreate(@ConnectedSocket() client: Socket, @MessageBody() roomOption: { roomName: string, roomPasswd: string, roomType: RoomType }) {
 		let player = this.getClientPlayer(client)
 		player && player.roomCreate({
-			id:player.id+"-"+1,
-			name:roomOption.roomName,
-			roomType:roomOption.roomType,
-			passwd:roomOption.roomPasswd,
+			id: player.id + "-" + 1,
+			name: roomOption.roomName,
+			roomType: roomOption.roomType,
+			passwd: roomOption.roomPasswd,
 		})
 	}
 

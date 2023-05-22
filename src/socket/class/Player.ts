@@ -6,6 +6,7 @@ import { getTime } from "./dateUtil"
 export interface IPlayer {
 	id: string,
 	uid: string | null,
+	icon: string | null,
 	name: string,
 	money: number,
 	readonly roomid: string | null,
@@ -22,12 +23,13 @@ export interface PlayerOption {
 	readonly roomManager: RoomManager,
 }
 
-export type PlayerInfo = Omit<IPlayer, "currentRoom">
+export type PlayerInfo = Omit<IPlayer, "currentRoom" | "icon">
 
 export class Player implements IPlayer, PlayerOption {
 	private _id: string
 	private _uid: string
 	private _name: string
+	private _icon: string
 	private _money: number
 	private _connected: boolean
 	private _lastActive: number
@@ -78,6 +80,16 @@ export class Player implements IPlayer, PlayerOption {
 	public set uid(uid) {
 		this.active()
 		this._uid = uid
+		this.notifyOther()
+	}
+
+	public get icon() {
+		return this._icon
+	}
+
+	public set icon(icon) {
+		this.active()
+		this._icon = icon
 		this.notifyOther()
 	}
 
@@ -134,7 +146,7 @@ export class Player implements IPlayer, PlayerOption {
 		return this._records
 	}
 
-	public set records(records:Array<string>) {
+	public set records(records: Array<string>) {
 		this._records = records
 	}
 
@@ -213,6 +225,12 @@ export class Player implements IPlayer, PlayerOption {
 		}
 	}
 
+	notifyOtherUpdateIcon() {
+		if (this.currentRoom) {
+			this.server.to(this.roomid).emit("fetchIcons")
+		}
+	}
+
 	getMoney(fromPlayer: Player, money: number) {
 		this.money += money
 		this.selfGetMessage(`<${fromPlayer.name}> 向 你 支付了 ${money} 分`)
@@ -251,11 +269,11 @@ export class Player implements IPlayer, PlayerOption {
 	}
 
 	otherGetMessage(msg: string) {
-		this.currentRoom.playersGetMessage(msg,this)
+		this.currentRoom.playersGetMessage(msg, this)
 		// this.client.to(this.roomid).emit("message", getTime() + " " + msg);
 	}
 
-	clearRecord(){
+	clearRecord() {
 		this.records = [];
 		this.client.emit("message", this.records);
 	}

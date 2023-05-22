@@ -1,6 +1,5 @@
 import { IPlayer, Player, PlayerInfo } from "./Player";
 import { RoomManager } from "./RoomManager";
-import { getTime } from "./dateUtil";
 
 export enum RoomType {
 	PRIVATE = 1,
@@ -88,18 +87,23 @@ export class Room implements IRoom {
 
 	public playerJoinRoom(player: Player, passwd?: string) {
 		if (!this.passwd) {
-			player.roomLeave()
+			if (!this._playerSet.has(player)) {
+				player.roomLeave()
+			}
 			this.registerPlayer(player)
 			player.notifyOther()
+			player.notifyOtherUpdateIcon()
 			// player.selfGetMessage(`你进入房间 ${this.name}`)
 			// player.otherGetMessage(`<${player.name}> 进入房间 ${this.name}`)
 		} else if (this._playerSet.has(player) && !player.client.rooms.has(this.id)) {
 			player.client.join(this.id)
+			player.notifyOtherUpdateIcon()
 		} else if (passwd) {
 			if (passwd === this.passwd) {
 				player.roomLeave()
 				this.registerPlayer(player)
 				player.notifyOther()
+				player.notifyOtherUpdateIcon()
 				// player.selfGetMessage(`你进入房间 ${this.name}`)
 				// player.otherGetMessage(`<${player.name}> 进入房间 ${this.name}`)
 			} else {
@@ -136,7 +140,7 @@ export class Room implements IRoom {
 	//房间里的成员获取信息
 	public playersGetMessage(msg: string, expect?: Player) {
 		for (let player of this._playerSet.values()) {
-			if(expect === player){
+			if (expect === player) {
 				return
 			}
 			player.selfGetMessage(msg);
@@ -147,6 +151,18 @@ export class Room implements IRoom {
 		if (this.playerCount <= 0 && this.roomType !== RoomType.ALWAYS) {
 			this._roomManager.deleteRoom(this.id)
 		}
+	}
+
+	//单独获取头像的列表
+	public getIconInfo() {
+		let res = []
+		for (let player of this._playerSet.values()) {
+			res.push({
+				uid: player.uid,
+				icon: player.icon,
+			})
+		}
+		return res;
 	}
 
 	public getInfo(): RoomInfo {
