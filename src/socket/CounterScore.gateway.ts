@@ -23,13 +23,13 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 		this.roomManager = new RoomManager()
 		this.roomManager.createRoom({
 			id: "main-1",
-			name: "main-1",
+			name: "主房间",
 			roomType: RoomType.ALWAYS
 		})
 
 		this.roomManager.createRoom({
 			id: "private-2",
-			name: "private-2",
+			name: "密码房",
 			passwd: "123456",
 			roomType: RoomType.ALWAYS
 		})
@@ -67,10 +67,10 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 	}
 
 	@SubscribeMessage('paymoney')
-	handlePayMoney(@ConnectedSocket() client: Socket, @MessageBody() payload: { from: IPlayer, to: IPlayer, money: number }) {
+	handlePayMoney(@ConnectedSocket() client: Socket, @MessageBody() payload: { from: string, to: string, money: number }) {
 
 		let fromPlayer = this.getClientPlayer(client)
-		let toPlayer = this.playerMap.getPlayer(payload.to.uid)
+		let toPlayer = this.playerMap.getPlayer(payload.to)
 
 		if (toPlayer && fromPlayer && fromPlayer.currentRoom === toPlayer.currentRoom) {
 			fromPlayer.payMoney(toPlayer, payload.money)

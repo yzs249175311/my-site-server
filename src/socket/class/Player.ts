@@ -305,10 +305,10 @@ export class Player implements IPlayer, PlayerOption {
 	}
 
 	logoutUnExpect() {
-		this.selfGetMessage(new Message({
-			type: MessageType.FAIL,
-			content: "你在另一个客户端上线了"
-		}))
+		// this.selfGetMessage(new Message({
+		// 	type: MessageType.FAIL,
+		// 	content: "你在另一个客户端上线了"
+		// }))
 		this.disconnect()
 	}
 
