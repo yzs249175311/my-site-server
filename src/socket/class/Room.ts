@@ -147,8 +147,8 @@ export class Room implements IRoom {
 	//房间里的成员获取信息
 	public playersGetMessage(msg: Message, expect?: Player) {
 		for (let player of this._playerSet.values()) {
-			if (expect === player) {
-				return
+			if (expect && player.id === expect.id) {
+				continue
 			}
 			player.selfGetMessage(msg);
 		}

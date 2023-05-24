@@ -5,6 +5,7 @@ import { PlayerMap } from './class/PlayerMap';
 import { RoomManager } from './class/RoomManager';
 import { IRoom, RoomType } from './class/Room';
 import { Message, MessageType } from './class/Message';
+import { OpenAIBot, openAIBot } from './class/OpenAIBot';
 
 let Mock = require("mockjs")
 
@@ -16,11 +17,13 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 	server: Server;
 	playerMap: PlayerMap
 	roomManager: RoomManager;
+	openAIBot: OpenAIBot;
 
 	constructor() {
 		this.playerMap = new PlayerMap()
 		this.playerMap.enableTrashPlayerTimer(60 * 1000)
 		this.roomManager = new RoomManager()
+		this.openAIBot = openAIBot
 		this.roomManager.createRoom({
 			id: "main-1",
 			name: "主房间",
@@ -85,7 +88,6 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 		if (player) {
 			client.emit("updateUser", player.getInfo())
 		}
-
 	}
 
 	//获取当前房间的信息
@@ -128,7 +130,6 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 		let player = this.getClientPlayer(client)
 		if (player) {
 			player.icon = icon
-			player.notifyOtherUpdateIcon()
 		}
 	}
 
@@ -188,7 +189,7 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 	@SubscribeMessage('talk')
 	async handleTalk(@ConnectedSocket() client: Socket, @MessageBody() msg: string) {
 		let player = this.getClientPlayer(client);
-		if(player){
+		if (player) {
 			player.talk(msg)
 		}
 	}

@@ -1,7 +1,9 @@
 import { Server, Socket } from 'socket.io';
 import { Room, RoomOption, RoomType } from './Room';
 import { RoomManager } from './RoomManager';
-import { IMessage, Message, MessageType } from './Message';
+import {  Message, MessageType } from './Message';
+import { ChatCompletionRequestMessage } from 'openai';
+import { commandHander } from './CommandHandle';
 
 export interface IPlayer {
 	id: string,
@@ -15,10 +17,10 @@ export interface IPlayer {
 	readonly lastActive: number
 	recordsCache: Array<Message>
 	records: Array<string> | null
+	messages: Array<ChatCompletionRequestMessage>
 }
 
 export interface PlayerOption {
-
 	client: Socket,
 	readonly server: Server,
 	readonly roomManager: RoomManager,
@@ -40,6 +42,7 @@ export class Player implements IPlayer, PlayerOption {
 	private _roomManager: RoomManager
 	private _recordsCache: Array<Message>
 	private _records: Array<string>
+	public messages: Array<ChatCompletionRequestMessage>
 
 	constructor(id: string, uid: string, name: string, option: PlayerOption) {
 		this._id = id
@@ -53,6 +56,7 @@ export class Player implements IPlayer, PlayerOption {
 		this._roomManager = option.roomManager
 		this._recordsCache = new Array<Message>()
 		this._records = new Array<string>()
+		this.messages = []
 	}
 
 	active(flag?: boolean) {
@@ -93,7 +97,7 @@ export class Player implements IPlayer, PlayerOption {
 	public set icon(icon) {
 		this.active()
 		this._icon = icon
-		this.notifyOther()
+		this.notifyOtherUpdateIcon()
 	}
 
 	public get name() {
@@ -217,6 +221,7 @@ export class Player implements IPlayer, PlayerOption {
 			lastActive: this.lastActive,
 			recordsCache: this.recordsCache,
 			records: this.records,
+			messages: this.messages
 		}
 	}
 
@@ -284,8 +289,10 @@ export class Player implements IPlayer, PlayerOption {
 			content: msg,
 		})
 
-		this.currentRoom.playersGetMessage(message)
+		this.otherGetMessage(message)
 
+		//判断是否是命令,并执行相应命令
+		commandHander.handle(this, msg)
 	}
 
 	selfGetMessage(msg: Message) {
@@ -302,8 +309,12 @@ export class Player implements IPlayer, PlayerOption {
 		this.client.emit("messageNotify", msg);
 	}
 
-	otherGetMessage(msg: Message) {
-		this.currentRoom.playersGetMessage(msg, this)
+	otherGetMessage(msg: Message, includeSelf: boolean = true) {
+		if (includeSelf) {
+			this.currentRoom?.playersGetMessage(msg)
+		} else {
+			this.currentRoom?.playersGetMessage(msg, this)
+		}
 	}
 
 	clearCacheRecords() {

@@ -7,14 +7,16 @@ export enum MessageType {
 	SYSTEM,
 	SUCCESS,
 	FAIL,
+	BOT,
 }
 
 
 export interface IMessage {
-	type: MessageType;
-	content: string;
-	time: string
-	from?: PlayerInfo;
+	type: MessageType,
+	content: string,
+	time: string,
+	from?: PlayerInfo,
+	to?: PlayerInfo,
 }
 
 export class Message {
@@ -22,12 +24,14 @@ export class Message {
 	public content: string;
 	public time: string;
 	public from?: PlayerInfo;
+	public to?: PlayerInfo;
 
 	constructor(message: Omit<IMessage, "time">) {
 		this.type = message.type
 		this.content = message.content
 		this.time = getTime()
 		this.from = message.from
+		this.to = message.to
 	}
 
 	handleTo(player: Player) {
@@ -37,6 +41,7 @@ export class Message {
 			case MessageType.SYSTEM: this.handleSystem(player); break;
 			case MessageType.SUCCESS: this.handleSuccess(player); break;
 			case MessageType.FAIL: this.handleFail(player); break;
+			case MessageType.BOT: this.handleBot(player); break;
 		}
 		//获得通知
 		player.selfGetNotify(this)
@@ -62,4 +67,11 @@ export class Message {
 		player.records.unshift(this.time + " " + "失败:" + this.content)
 	}
 
+	private handleBot(player: Player) {
+		if (this.to) {
+			player.records.unshift(this.time + " 【机器人】对" + this.to.name + "说:" + this.content)
+		} else {
+			player.records.unshift(this.time + " 【机器人】说:" + this.content)
+		}
+	}
 }
