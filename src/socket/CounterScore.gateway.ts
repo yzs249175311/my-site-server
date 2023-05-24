@@ -185,6 +185,14 @@ export class CounterScoreGateway implements OnGatewayConnection, OnGatewayDiscon
 		player.roomLeave()
 	}
 
+	@SubscribeMessage('talk')
+	async handleTalk(@ConnectedSocket() client: Socket, @MessageBody() msg: string) {
+		let player = this.getClientPlayer(client);
+		if(player){
+			player.talk(msg)
+		}
+	}
+
 	handleFetchAll(roomid: string) {
 		this.server.to(roomid).emit("fetchAll")
 	}

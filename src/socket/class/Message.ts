@@ -2,7 +2,7 @@ import { Player, PlayerInfo } from "./Player";
 import { getTime } from "./dateUtil"
 
 export enum MessageType {
-	TALK=1,
+	TALK = 1,
 	PAY,
 	SYSTEM,
 	SUCCESS,
@@ -38,7 +38,7 @@ export class Message {
 			case MessageType.SUCCESS: this.handleSuccess(player); break;
 			case MessageType.FAIL: this.handleFail(player); break;
 		}
-
+		//获得通知
 		player.selfGetNotify(this)
 	}
 

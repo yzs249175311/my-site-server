@@ -277,6 +277,17 @@ export class Player implements IPlayer, PlayerOption {
 		}))
 	}
 
+	talk(msg: string) {
+		let message = new Message({
+			type: MessageType.TALK,
+			from: this.getInfo(),
+			content: msg,
+		})
+
+		this.currentRoom.playersGetMessage(message)
+
+	}
+
 	selfGetMessage(msg: Message) {
 		msg.handleTo(this)
 		this.client.emit("message", this.records);
