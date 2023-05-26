@@ -16,9 +16,10 @@ export interface IPlayer {
 	currentRoom: null | Room
 	readonly lastActive: number
 	recordsCache: Array<Message>
-	records: Array<string> | null
+	records: Array<Message>
 	messages: Array<ChatCompletionRequestMessage>
 }
+
 
 export interface PlayerOption {
 	client: Socket,
@@ -27,6 +28,7 @@ export interface PlayerOption {
 }
 
 export type PlayerInfo = Omit<IPlayer, "currentRoom" | "icon">
+export type PlayerBaseInfo = Pick<PlayerInfo,"id"|"uid"|"name"|"money">
 
 export class Player implements IPlayer, PlayerOption {
 	private _id: string
@@ -41,7 +43,7 @@ export class Player implements IPlayer, PlayerOption {
 	private _currentRoom: Room
 	private _roomManager: RoomManager
 	private _recordsCache: Array<Message>
-	private _records: Array<string>
+	private _records: Array<Message>
 	public messages: Array<ChatCompletionRequestMessage>
 
 	constructor(id: string, uid: string, name: string, option: PlayerOption) {
@@ -55,7 +57,7 @@ export class Player implements IPlayer, PlayerOption {
 		this.client = option.client
 		this._roomManager = option.roomManager
 		this._recordsCache = new Array<Message>()
-		this._records = new Array<string>()
+		this._records = new Array<Message>()
 		this.messages = []
 	}
 
@@ -161,7 +163,7 @@ export class Player implements IPlayer, PlayerOption {
 		return this._records
 	}
 
-	public set records(records: Array<string>) {
+	public set records(records: Array<Message>) {
 		this._records = records
 	}
 
@@ -231,6 +233,15 @@ export class Player implements IPlayer, PlayerOption {
 		this.notifyOther()
 	}
 
+	getBaseInfo():PlayerBaseInfo{
+		return {
+			id:this.id,
+			uid:this.uid,
+			name:this.name,
+			money:this.money,
+		}
+	}
+
 	notifyOther(roomid?: string, self: boolean = true) {
 		if (roomid) {
 			this.client.to(roomid).emit("fetchAll")
@@ -252,7 +263,7 @@ export class Player implements IPlayer, PlayerOption {
 		this.money += money
 		this.selfGetMessage(new Message({
 			type: MessageType.PAY,
-			from: fromPlayer.getInfo(),
+			from: fromPlayer.getBaseInfo(),
 			content: money.toString()
 		}))
 	}
@@ -285,7 +296,7 @@ export class Player implements IPlayer, PlayerOption {
 	talk(msg: string) {
 		let message = new Message({
 			type: MessageType.TALK,
-			from: this.getInfo(),
+			from: this.getBaseInfo(),
 			content: msg,
 		})
 

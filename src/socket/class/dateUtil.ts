@@ -1,4 +1,8 @@
+let intlTime = new Intl.DateTimeFormat("zh-CN",{
+	hour:"2-digit",
+	minute:"2-digit",
+	second:"2-digit",
+})
 export function getTime() {
-	let date = new Date()
-	return date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds().toString().padStart(2, "0")
+	return intlTime.format(Date.now())
 }

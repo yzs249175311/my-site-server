@@ -2,6 +2,7 @@ import axios, { AxiosRequestConfig } from "openai/node_modules/axios";
 import { ChatCompletionRequestMessage, Configuration, ImagesResponseDataInner, OpenAIApi } from "openai";
 
 let apiKey = process.env.OPENAI_API_KEY
+console.log("获取apiKEY"+apiKey)
 
 const configuration = new Configuration({
 	apiKey: apiKey,

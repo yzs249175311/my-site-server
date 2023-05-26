@@ -1,7 +1,8 @@
 import { Player } from "./Player";
 import { openAIBot, OpenAIBot } from "./OpenAIBot"
 import { Message, MessageType } from "./Message";
-import { CommandHandler } from "./CommandHandle";
+import { AxiosError } from "axios";
+
 
 abstract class AbstractBotCommand {
 	protected openAIBot: OpenAIBot
@@ -15,9 +16,6 @@ abstract class AbstractBotCommand {
 
 //和机器人文本交流
 export class TalkBotCommand extends AbstractBotCommand {
-	constructor() {
-		super();
-	}
 
 	public exec(player: Player, msg: string): void {
 		if (player.messages.length >= 10) {
@@ -32,11 +30,11 @@ export class TalkBotCommand extends AbstractBotCommand {
 			player.messages.push(res)
 			player.otherGetMessage(new Message({
 				type: MessageType.BOT,
-				to: player.getInfo(),
+				to: player.getBaseInfo(),
 				content: res.content,
 			}))
-		}).catch(() => {
-			console.error("createChat:请求对话失败")
+		}).catch((error:AxiosError) => {
+			console.error("createChat:请求对话失败"+error)
 			player.selfGetMessage(new Message({
 				type: MessageType.FAIL,
 				content: "机器人出现了一点问题，请稍后再试！"
@@ -48,18 +46,17 @@ export class TalkBotCommand extends AbstractBotCommand {
 //生成图片并成为自己的头像
 export class ImageBotCommand extends AbstractBotCommand {
 	public exec(player: Player, msg: string): void {
-		console.log("生成图片")
 		this.openAIBot.createImage(msg).then(res => {
 			if (res && res.b64_json) {
 				player.icon = "data:image/png;base64," + res.b64_json
 				player.notifyOtherUpdateIcon()
 			}
-		}).catch(() => {
+		}).catch((error) => {
+			console.error("createImage:请求生成图片失败"+error)
 			player.selfGetMessage(new Message({
 				type: MessageType.FAIL,
 				content: "机器人出现了一点问题，请稍后再试！"
 			}))
-			console.error("createImage:请求生成图片失败")
 		})
 	}
 }

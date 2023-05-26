@@ -1,4 +1,4 @@
-import { Player, PlayerInfo } from "./Player";
+import { Player, PlayerBaseInfo, PlayerInfo } from "./Player";
 import { getTime } from "./dateUtil"
 
 export enum MessageType {
@@ -15,16 +15,16 @@ export interface IMessage {
 	type: MessageType,
 	content: string,
 	time: string,
-	from?: PlayerInfo,
-	to?: PlayerInfo,
+	from?: PlayerBaseInfo,
+	to?: PlayerBaseInfo,
 }
 
-export class Message {
+export class Message implements IMessage {
 	public type: MessageType;
 	public content: string;
 	public time: string;
-	public from?: PlayerInfo;
-	public to?: PlayerInfo;
+	public from?: PlayerBaseInfo;
+	public to?: PlayerBaseInfo;
 
 	constructor(message: Omit<IMessage, "time">) {
 		this.type = message.type
@@ -48,30 +48,26 @@ export class Message {
 	}
 
 	private handleTalk(player: Player) {
-		player.records.unshift(this.time + " " + this.from?.name + "说:" + this.content)
+		player.records.unshift(this)
 	}
 
 	private handlePay(player: Player) {
-		player.records.unshift(this.time + " " + "<" + this.from?.name + ">" + " 向你支付了" + this.content + "分")
+		player.records.unshift(this)
 	}
 
 	private handleSystem(player: Player) {
-		player.records.unshift(this.time + " " + "系统信息:" + this.content)
+		player.records.unshift(this)
 	}
 
 	private handleSuccess(player: Player) {
-		player.records.unshift(this.time + " " + "成功:" + this.content)
+		player.records.unshift(this)
 	}
 
 	private handleFail(player: Player) {
-		player.records.unshift(this.time + " " + "失败:" + this.content)
+		player.records.unshift(this)
 	}
 
 	private handleBot(player: Player) {
-		if (this.to) {
-			player.records.unshift(this.time + " 【机器人】对" + this.to.name + "说:" + this.content)
-		} else {
-			player.records.unshift(this.time + " 【机器人】说:" + this.content)
-		}
+		player.records.unshift(this)
 	}
 }

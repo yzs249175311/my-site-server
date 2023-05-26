@@ -1,5 +1,5 @@
 import { IMessage, Message, MessageType } from "./Message";
-import { IPlayer, Player, PlayerInfo } from "./Player";
+import { IPlayer, Player, PlayerBaseInfo, PlayerInfo } from "./Player";
 import { RoomManager } from "./RoomManager";
 
 export enum RoomType {
@@ -18,7 +18,7 @@ export interface IRoom {
 	readonly playerList: Array<PlayerInfo>
 }
 
-export type RoomInfo = Omit<IRoom, "owner"> & { owner: Pick<IPlayer, "id" | "name"> }
+export type RoomInfo = Omit<IRoom, "owner"> & { owner: PlayerBaseInfo }
 
 
 export type RoomOption = Pick<IRoom, "id" | "name" | "roomType"> & Partial<Pick<IRoom, "passwd" | "owner">>
@@ -177,10 +177,7 @@ export class Room implements IRoom {
 			id: this.id,
 			name: this.name,
 			passwd: this.passwd,
-			owner: this.owner ? {
-				id: this.owner.id,
-				name: this.owner.name
-			} : null,
+			owner: this.owner?.getBaseInfo(),
 			roomType: this.roomType,
 			playerCount: this.playerCount,
 			playerList: this.playerList,
